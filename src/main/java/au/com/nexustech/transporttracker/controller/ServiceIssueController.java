@@ -1,5 +1,6 @@
 package au.com.nexustech.transporttracker.controller;
 
+import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 import au.com.nexustech.transporttracker.dto.CreateServiceIssueRequest;
 import au.com.nexustech.transporttracker.dto.ServiceIssueResponse;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
@@ -43,6 +44,16 @@ public class ServiceIssueController {
     ) {
         return ServiceIssueResponse.from(
                 serviceIssueService.getIssueByNumber(issueNumber)
+        );
+    }
+
+    @PatchMapping("/{issueNumber}/assignment")
+    public ServiceIssueResponse assignIssue(
+            @PathVariable String issueNumber,
+            @Valid @RequestBody AssignIssueRequest request
+    ) {
+        return ServiceIssueResponse.from(
+                serviceIssueService.assignIssue(issueNumber, request)
         );
     }
 }

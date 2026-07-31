@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,4 +68,40 @@ class ServiceIssueServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Reporter not found");
     }
+    @Test
+void shouldAssignIssueToSupportAgent() {
+    AppUser reporter = appUserRepository.save(new AppUser(
+            "assignment-reporter",
+            "Assignment Reporter",
+            "assignment.reporter@example.com",
+            UserRole.REPORTER
+    ));
+
+    AppUser supportAgent = appUserRepository
+            .findByUsername("support.agent")
+            .orElseThrow();
+
+    CreateServiceIssueRequest createRequest =
+            new CreateServiceIssueRequest(
+                    "Station display unavailable",
+                    "The station display is not responding.",
+                    IssueCategory.APPLICATION,
+                    IssuePriority.HIGH,
+                    reporter.getId()
+            );
+
+    ServiceIssue createdIssue =
+            serviceIssueService.createIssue(createRequest);
+
+    ServiceIssue assignedIssue = serviceIssueService.assignIssue(
+            createdIssue.getIssueNumber(),
+            new AssignIssueRequest(supportAgent.getId())
+    );
+
+    assertThat(assignedIssue.getAssignedTo()).isNotNull();
+    assertThat(assignedIssue.getAssignedTo().getId())
+            .isEqualTo(supportAgent.getId());
+    assertThat(assignedIssue.getStatus())
+            .isEqualTo(IssueStatus.ASSIGNED);
+}
 }

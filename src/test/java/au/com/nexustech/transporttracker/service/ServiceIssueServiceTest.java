@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import au.com.nexustech.transporttracker.dto.AddCommentRequest;
+import au.com.nexustech.transporttracker.enums.CommentType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -121,7 +123,51 @@ class ServiceIssueServiceTest {
         assertThat(assignedIssue.getStatus())
                 .isEqualTo(IssueStatus.ASSIGNED);
     }
+@Test
+void shouldAddAndRetrieveIssueComment() {
+    AppUser reporter = appUserRepository.save(new AppUser(
+            "comment-reporter",
+            "Comment Test Reporter",
+            "comment.reporter@example.com",
+            UserRole.REPORTER
+    ));
 
+    AppUser supportAgent = appUserRepository
+            .findByUsername("support.agent")
+            .orElseThrow();
+
+    ServiceIssue issue = serviceIssueService.createIssue(
+            new CreateServiceIssueRequest(
+                    "Ticket machine issue",
+                    "The ticket machine is unavailable.",
+                    IssueCategory.APPLICATION,
+                    IssuePriority.HIGH,
+                    reporter.getId()
+            )
+    );
+
+    var savedComment = serviceIssueService.addComment(
+            issue.getIssueNumber(),
+            new AddCommentRequest(
+                    "Initial investigation has started.",
+                    CommentType.COMMENT,
+                    supportAgent.getId()
+            )
+    );
+
+    var comments = serviceIssueService.getComments(
+            issue.getIssueNumber()
+    );
+
+    assertThat(savedComment.id()).isNotNull();
+    assertThat(savedComment.commentText())
+            .isEqualTo("Initial investigation has started.");
+    assertThat(savedComment.commentType())
+            .isEqualTo(CommentType.COMMENT);
+    assertThat(savedComment.authorId())
+            .isEqualTo(supportAgent.getId());
+    assertThat(comments).hasSize(1);
+}
     @Test
     void shouldUpdateIssuePriorityStatusAndHistory() {
         AppUser reporter = appUserRepository.save(new AppUser(

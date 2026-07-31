@@ -11,6 +11,8 @@ import au.com.nexustech.transporttracker.service.ServiceIssueService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import au.com.nexustech.transporttracker.dto.AddCommentRequest;
+import au.com.nexustech.transporttracker.dto.IssueCommentResponse;
 
 import java.util.List;
 
@@ -100,4 +102,22 @@ public class ServiceIssueController {
         return serviceIssueService
                 .getStatusHistory(issueNumber);
     }
+    @PostMapping("/{issueNumber}/comments")
+@ResponseStatus(HttpStatus.CREATED)
+public IssueCommentResponse addComment(
+        @PathVariable String issueNumber,
+        @Valid @RequestBody AddCommentRequest request
+) {
+    return serviceIssueService.addComment(
+            issueNumber,
+            request
+    );
+}
+
+@GetMapping("/{issueNumber}/comments")
+public List<IssueCommentResponse> getComments(
+        @PathVariable String issueNumber
+) {
+    return serviceIssueService.getComments(issueNumber);
+}
 }

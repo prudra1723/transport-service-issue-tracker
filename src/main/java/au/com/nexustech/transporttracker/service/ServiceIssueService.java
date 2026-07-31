@@ -1,11 +1,14 @@
 package au.com.nexustech.transporttracker.service;
 
+import au.com.nexustech.transporttracker.dto.AddCommentRequest;
 import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 import au.com.nexustech.transporttracker.dto.CreateServiceIssueRequest;
+import au.com.nexustech.transporttracker.dto.IssueCommentResponse;
 import au.com.nexustech.transporttracker.dto.StatusHistoryResponse;
 import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.AppUser;
+import au.com.nexustech.transporttracker.entity.IssueComment;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
 import au.com.nexustech.transporttracker.entity.StatusHistory;
 import au.com.nexustech.transporttracker.enums.IssueStatus;
@@ -13,6 +16,7 @@ import au.com.nexustech.transporttracker.enums.UserRole;
 import au.com.nexustech.transporttracker.exception.BusinessRuleException;
 import au.com.nexustech.transporttracker.exception.ResourceNotFoundException;
 import au.com.nexustech.transporttracker.repository.AppUserRepository;
+import au.com.nexustech.transporttracker.repository.IssueCommentRepository;
 import au.com.nexustech.transporttracker.repository.ServiceIssueRepository;
 import au.com.nexustech.transporttracker.repository.StatusHistoryRepository;
 import org.springframework.stereotype.Service;
@@ -28,18 +32,23 @@ public class ServiceIssueService {
     private final ServiceIssueRepository serviceIssueRepository;
     private final AppUserRepository appUserRepository;
     private final StatusHistoryRepository statusHistoryRepository;
+    private final IssueCommentRepository issueCommentRepository;
 
     public ServiceIssueService(
             ServiceIssueRepository serviceIssueRepository,
             AppUserRepository appUserRepository,
-            StatusHistoryRepository statusHistoryRepository
+            StatusHistoryRepository statusHistoryRepository,
+            IssueCommentRepository issueCommentRepository
     ) {
         this.serviceIssueRepository = serviceIssueRepository;
         this.appUserRepository = appUserRepository;
         this.statusHistoryRepository = statusHistoryRepository;
+        this.issueCommentRepository = issueCommentRepository;
     }
 
-    public ServiceIssue createIssue(CreateServiceIssueRequest request) {
+    public ServiceIssue createIssue(
+            CreateServiceIssueRequest request
+    ) {
         AppUser reporter = appUserRepository
                 .findById(request.reportedById())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -225,6 +234,51 @@ public class ServiceIssueService {
                 .findByIssueIdOrderByChangedAtDesc(issue.getId())
                 .stream()
                 .map(StatusHistoryResponse::from)
+                .toList();
+    }
+
+    public IssueCommentResponse addComment(
+            String issueNumber,
+            AddCommentRequest request
+    ) {
+        ServiceIssue issue = getIssueByNumber(issueNumber);
+
+        AppUser author = appUserRepository
+                .findById(request.authorId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Comment author not found with ID: "
+                                + request.authorId()
+                ));
+
+        if (author.getActive() == null
+                || author.getActive() != 1) {
+            throw new BusinessRuleException(
+                    "An inactive user cannot add comments"
+            );
+        }
+
+        IssueComment comment = new IssueComment(
+                issue,
+                author,
+                request.commentText(),
+                request.commentType()
+        );
+
+        return IssueCommentResponse.from(
+                issueCommentRepository.save(comment)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<IssueCommentResponse> getComments(
+            String issueNumber
+    ) {
+        ServiceIssue issue = getIssueByNumber(issueNumber);
+
+        return issueCommentRepository
+                .findByIssueIdOrderByCreatedAtAsc(issue.getId())
+                .stream()
+                .map(IssueCommentResponse::from)
                 .toList();
     }
 

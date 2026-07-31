@@ -23,6 +23,8 @@ public interface ServiceIssueRepository
 
     List<ServiceIssue> findByAssignedToIdOrderByCreatedAtDesc(Long userId);
 
+    List<ServiceIssue> findAllByOrderByCreatedAtDesc();
+
     List<ServiceIssue> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
             String title,
             String description

@@ -28,11 +28,11 @@ class ServiceIssueRepositoryTest {
     @Test
     void shouldSaveAndFindServiceIssueByIssueNumber() {
         AppUser reporter = new AppUser(
-                "rudra",
-                "Rudra Pandey",
-                "rudra@example.com",
-                UserRole.REPORTER
-        );
+        "repository-reporter",
+        "Repository Test Reporter",
+        "repository.reporter@example.com",
+        UserRole.REPORTER
+);
 
         AppUser savedReporter = appUserRepository.save(reporter);
 
@@ -56,6 +56,6 @@ class ServiceIssueRepositoryTest {
                 .isEqualTo("Passenger information display unavailable");
         assertThat(result.get().getStatus()).isEqualTo(IssueStatus.OPEN);
         assertThat(result.get().getReportedBy().getUsername())
-                .isEqualTo("rudra");
+                .isEqualTo("repository-reporter");
     }
 }

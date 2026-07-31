@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
+import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
+import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -68,6 +70,55 @@ class ServiceIssueServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Reporter not found");
     }
+    @Test
+void shouldUpdateIssuePriorityAndStatus() {
+    AppUser reporter = appUserRepository.save(new AppUser(
+            "status-reporter",
+            "Status Test Reporter",
+            "status.reporter@example.com",
+            UserRole.REPORTER
+    ));
+
+    AppUser supportAgent = appUserRepository
+            .findByUsername("support.agent")
+            .orElseThrow();
+
+    ServiceIssue issue = serviceIssueService.createIssue(
+            new CreateServiceIssueRequest(
+                    "Platform display failure",
+                    "The platform display is unavailable.",
+                    IssueCategory.APPLICATION,
+                    IssuePriority.MEDIUM,
+                    reporter.getId()
+            )
+    );
+
+    serviceIssueService.assignIssue(
+            issue.getIssueNumber(),
+            new AssignIssueRequest(supportAgent.getId())
+    );
+
+    ServiceIssue prioritisedIssue =
+            serviceIssueService.updatePriority(
+                    issue.getIssueNumber(),
+                    new UpdatePriorityRequest(IssuePriority.CRITICAL)
+            );
+
+    ServiceIssue inProgressIssue =
+            serviceIssueService.updateStatus(
+                    issue.getIssueNumber(),
+                    new UpdateStatusRequest(
+                            IssueStatus.IN_PROGRESS,
+                            "Support agent started investigating",
+                            supportAgent.getId()
+                    )
+            );
+
+    assertThat(prioritisedIssue.getPriority())
+            .isEqualTo(IssuePriority.CRITICAL);
+    assertThat(inProgressIssue.getStatus())
+            .isEqualTo(IssueStatus.IN_PROGRESS);
+}
     @Test
 void shouldAssignIssueToSupportAgent() {
     AppUser reporter = appUserRepository.save(new AppUser(

@@ -12,6 +12,10 @@ import au.com.nexustech.transporttracker.repository.AppUserRepository;
 import au.com.nexustech.transporttracker.repository.ServiceIssueRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
+import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
+
+import java.time.LocalDateTime;
 
 import java.util.List;
 
@@ -113,7 +117,66 @@ public class ServiceIssueService {
 
         return serviceIssueRepository.save(issue);
     }
+public ServiceIssue updatePriority(
+        String issueNumber,
+        UpdatePriorityRequest request
+) {
+    ServiceIssue issue = getIssueByNumber(issueNumber);
 
+    if (issue.getStatus() == IssueStatus.CLOSED) {
+        throw new BusinessRuleException(
+                "The priority of a closed issue cannot be changed"
+        );
+    }
+
+    issue.setPriority(request.priority());
+    return serviceIssueRepository.save(issue);
+}
+
+public ServiceIssue updateStatus(
+        String issueNumber,
+        UpdateStatusRequest request
+) {
+    ServiceIssue issue = getIssueByNumber(issueNumber);
+
+    appUserRepository.findById(request.changedById())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "User not found with ID: " + request.changedById()
+            ));
+
+    IssueStatus newStatus = request.status();
+
+    if (issue.getStatus() == IssueStatus.CLOSED
+            && newStatus != IssueStatus.REOPENED) {
+        throw new BusinessRuleException(
+                "A closed issue must be reopened before changing its status"
+        );
+    }
+
+    if (newStatus == IssueStatus.ASSIGNED
+            && issue.getAssignedTo() == null) {
+        throw new BusinessRuleException(
+                "An issue must have an assignee before using ASSIGNED status"
+        );
+    }
+
+    issue.setStatus(newStatus);
+
+    if (newStatus == IssueStatus.RESOLVED) {
+        issue.setResolvedAt(LocalDateTime.now());
+    }
+
+    if (newStatus == IssueStatus.CLOSED) {
+        issue.setClosedAt(LocalDateTime.now());
+    }
+
+    if (newStatus == IssueStatus.REOPENED) {
+        issue.setResolvedAt(null);
+        issue.setClosedAt(null);
+    }
+
+    return serviceIssueRepository.save(issue);
+}
     private synchronized String generateIssueNumber() {
         long nextNumber = serviceIssueRepository.count() + 1;
         String issueNumber = String.format("TSI-%04d", nextNumber);

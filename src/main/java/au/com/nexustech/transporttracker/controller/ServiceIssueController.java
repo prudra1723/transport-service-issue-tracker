@@ -3,13 +3,14 @@ package au.com.nexustech.transporttracker.controller;
 import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 import au.com.nexustech.transporttracker.dto.CreateServiceIssueRequest;
 import au.com.nexustech.transporttracker.dto.ServiceIssueResponse;
+import au.com.nexustech.transporttracker.dto.StatusHistoryResponse;
+import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
+import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
 import au.com.nexustech.transporttracker.service.ServiceIssueService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
-import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 
 import java.util.List;
 
@@ -19,7 +20,9 @@ public class ServiceIssueController {
 
     private final ServiceIssueService serviceIssueService;
 
-    public ServiceIssueController(ServiceIssueService serviceIssueService) {
+    public ServiceIssueController(
+            ServiceIssueService serviceIssueService
+    ) {
         this.serviceIssueService = serviceIssueService;
     }
 
@@ -28,7 +31,9 @@ public class ServiceIssueController {
     public ServiceIssueResponse createIssue(
             @Valid @RequestBody CreateServiceIssueRequest request
     ) {
-        ServiceIssue issue = serviceIssueService.createIssue(request);
+        ServiceIssue issue =
+                serviceIssueService.createIssue(request);
+
         return ServiceIssueResponse.from(issue);
     }
 
@@ -55,26 +60,44 @@ public class ServiceIssueController {
             @Valid @RequestBody AssignIssueRequest request
     ) {
         return ServiceIssueResponse.from(
-                serviceIssueService.assignIssue(issueNumber, request)
+                serviceIssueService.assignIssue(
+                        issueNumber,
+                        request
+                )
         );
     }
-    @PatchMapping("/{issueNumber}/priority")
-public ServiceIssueResponse updatePriority(
-        @PathVariable String issueNumber,
-        @Valid @RequestBody UpdatePriorityRequest request
-) {
-    return ServiceIssueResponse.from(
-            serviceIssueService.updatePriority(issueNumber, request)
-    );
-}
 
-@PatchMapping("/{issueNumber}/status")
-public ServiceIssueResponse updateStatus(
-        @PathVariable String issueNumber,
-        @Valid @RequestBody UpdateStatusRequest request
-) {
-    return ServiceIssueResponse.from(
-            serviceIssueService.updateStatus(issueNumber, request)
-    );
-}
+    @PatchMapping("/{issueNumber}/priority")
+    public ServiceIssueResponse updatePriority(
+            @PathVariable String issueNumber,
+            @Valid @RequestBody UpdatePriorityRequest request
+    ) {
+        return ServiceIssueResponse.from(
+                serviceIssueService.updatePriority(
+                        issueNumber,
+                        request
+                )
+        );
+    }
+
+    @PatchMapping("/{issueNumber}/status")
+    public ServiceIssueResponse updateStatus(
+            @PathVariable String issueNumber,
+            @Valid @RequestBody UpdateStatusRequest request
+    ) {
+        return ServiceIssueResponse.from(
+                serviceIssueService.updateStatus(
+                        issueNumber,
+                        request
+                )
+        );
+    }
+
+    @GetMapping("/{issueNumber}/history")
+    public List<StatusHistoryResponse> getStatusHistory(
+            @PathVariable String issueNumber
+    ) {
+        return serviceIssueService
+                .getStatusHistory(issueNumber);
+    }
 }

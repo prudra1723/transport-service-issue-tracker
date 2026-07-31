@@ -2,6 +2,7 @@ package au.com.nexustech.transporttracker.service;
 
 import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 import au.com.nexustech.transporttracker.dto.CreateServiceIssueRequest;
+import au.com.nexustech.transporttracker.dto.StatusHistoryResponse;
 import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.AppUser;
@@ -39,7 +40,8 @@ public class ServiceIssueService {
     }
 
     public ServiceIssue createIssue(CreateServiceIssueRequest request) {
-        AppUser reporter = appUserRepository.findById(request.reportedById())
+        AppUser reporter = appUserRepository
+                .findById(request.reportedById())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Reporter not found with ID: "
                                 + request.reportedById()
@@ -61,7 +63,8 @@ public class ServiceIssueService {
 
     @Transactional(readOnly = true)
     public List<ServiceIssue> getAllIssues() {
-        return serviceIssueRepository.findAllByOrderByCreatedAtDesc();
+        return serviceIssueRepository
+                .findAllByOrderByCreatedAtDesc();
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +77,8 @@ public class ServiceIssueService {
 
     @Transactional(readOnly = true)
     public ServiceIssue getIssueByNumber(String issueNumber) {
-        return serviceIssueRepository.findByIssueNumber(issueNumber)
+        return serviceIssueRepository
+                .findByIssueNumber(issueNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Service issue not found: " + issueNumber
                 ));
@@ -93,7 +97,8 @@ public class ServiceIssueService {
                                 + request.assignedToId()
                 ));
 
-        if (assignee.getActive() == null || assignee.getActive() != 1) {
+        if (assignee.getActive() == null
+                || assignee.getActive() != 1) {
             throw new BusinessRuleException(
                     "The selected user is inactive"
             );
@@ -194,7 +199,8 @@ public class ServiceIssueService {
             issue.setClosedAt(null);
         }
 
-        ServiceIssue savedIssue = serviceIssueRepository.save(issue);
+        ServiceIssue savedIssue =
+                serviceIssueRepository.save(issue);
 
         StatusHistory history = new StatusHistory(
                 savedIssue,
@@ -209,6 +215,19 @@ public class ServiceIssueService {
         return savedIssue;
     }
 
+    @Transactional(readOnly = true)
+    public List<StatusHistoryResponse> getStatusHistory(
+            String issueNumber
+    ) {
+        ServiceIssue issue = getIssueByNumber(issueNumber);
+
+        return statusHistoryRepository
+                .findByIssueIdOrderByChangedAtDesc(issue.getId())
+                .stream()
+                .map(StatusHistoryResponse::from)
+                .toList();
+    }
+
     private synchronized String generateIssueNumber() {
         long nextNumber = serviceIssueRepository.count() + 1;
         String issueNumber = String.format(
@@ -216,7 +235,8 @@ public class ServiceIssueService {
                 nextNumber
         );
 
-        while (serviceIssueRepository.existsByIssueNumber(issueNumber)) {
+        while (serviceIssueRepository
+                .existsByIssueNumber(issueNumber)) {
             nextNumber++;
             issueNumber = String.format(
                     "TSI-%04d",

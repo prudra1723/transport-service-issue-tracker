@@ -4,6 +4,7 @@ import au.com.nexustech.transporttracker.dto.AddCommentRequest;
 import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 import au.com.nexustech.transporttracker.dto.CreateServiceIssueRequest;
 import au.com.nexustech.transporttracker.dto.IssueCommentResponse;
+import au.com.nexustech.transporttracker.dto.ResolveIssueRequest;
 import au.com.nexustech.transporttracker.dto.StatusHistoryResponse;
 import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
@@ -11,6 +12,7 @@ import au.com.nexustech.transporttracker.entity.AppUser;
 import au.com.nexustech.transporttracker.entity.IssueComment;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
 import au.com.nexustech.transporttracker.entity.StatusHistory;
+import au.com.nexustech.transporttracker.enums.CommentType;
 import au.com.nexustech.transporttracker.enums.IssueStatus;
 import au.com.nexustech.transporttracker.enums.UserRole;
 import au.com.nexustech.transporttracker.exception.BusinessRuleException;
@@ -113,9 +115,7 @@ public class ServiceIssueService {
             );
         }
 
-        if (assignee.getRole() != UserRole.SUPPORT_AGENT
-                && assignee.getRole() != UserRole.MANAGER
-                && assignee.getRole() != UserRole.ADMIN) {
+        if (!canManageIssues(assignee)) {
             throw new BusinessRuleException(
                     "Issues can only be assigned to support agents, "
                             + "managers or administrators"
@@ -211,15 +211,13 @@ public class ServiceIssueService {
         ServiceIssue savedIssue =
                 serviceIssueRepository.save(issue);
 
-        StatusHistory history = new StatusHistory(
+        statusHistoryRepository.save(new StatusHistory(
                 savedIssue,
                 previousStatus,
                 newStatus,
                 changedBy,
                 request.reason()
-        );
-
-        statusHistoryRepository.save(history);
+        ));
 
         return savedIssue;
     }
@@ -280,6 +278,78 @@ public class ServiceIssueService {
                 .stream()
                 .map(IssueCommentResponse::from)
                 .toList();
+    }
+
+    public ServiceIssue resolveIssue(
+            String issueNumber,
+            ResolveIssueRequest request
+    ) {
+        ServiceIssue issue = getIssueByNumber(issueNumber);
+
+        AppUser resolvedBy = appUserRepository
+                .findById(request.resolvedById())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Resolving user not found with ID: "
+                                + request.resolvedById()
+                ));
+
+        if (resolvedBy.getActive() == null
+                || resolvedBy.getActive() != 1) {
+            throw new BusinessRuleException(
+                    "An inactive user cannot resolve an issue"
+            );
+        }
+
+        if (!canManageIssues(resolvedBy)) {
+            throw new BusinessRuleException(
+                    "Only support agents, managers or administrators "
+                            + "can resolve issues"
+            );
+        }
+
+        if (issue.getStatus() == IssueStatus.CLOSED) {
+            throw new BusinessRuleException(
+                    "A closed issue cannot be resolved"
+            );
+        }
+
+        if (issue.getStatus() == IssueStatus.RESOLVED) {
+            throw new BusinessRuleException(
+                    "The issue is already resolved"
+            );
+        }
+
+        IssueStatus previousStatus = issue.getStatus();
+
+        issue.setResolutionNotes(request.resolutionNotes());
+        issue.setStatus(IssueStatus.RESOLVED);
+        issue.setResolvedAt(LocalDateTime.now());
+
+        ServiceIssue savedIssue =
+                serviceIssueRepository.save(issue);
+
+        statusHistoryRepository.save(new StatusHistory(
+                savedIssue,
+                previousStatus,
+                IssueStatus.RESOLVED,
+                resolvedBy,
+                "Issue resolved"
+        ));
+
+        issueCommentRepository.save(new IssueComment(
+                savedIssue,
+                resolvedBy,
+                request.resolutionNotes(),
+                CommentType.RESOLUTION_NOTE
+        ));
+
+        return savedIssue;
+    }
+
+    private boolean canManageIssues(AppUser user) {
+        return user.getRole() == UserRole.SUPPORT_AGENT
+                || user.getRole() == UserRole.MANAGER
+                || user.getRole() == UserRole.ADMIN;
     }
 
     private synchronized String generateIssueNumber() {

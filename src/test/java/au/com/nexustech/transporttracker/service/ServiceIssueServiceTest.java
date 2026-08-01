@@ -19,6 +19,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import au.com.nexustech.transporttracker.dto.AddCommentRequest;
 import au.com.nexustech.transporttracker.enums.CommentType;
+import au.com.nexustech.transporttracker.dto.ResolveIssueRequest;
+import au.com.nexustech.transporttracker.enums.CommentType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -234,4 +236,66 @@ void shouldAddAndRetrieveIssueComment() {
         assertThat(history.get(0).getChangedBy().getId())
                 .isEqualTo(supportAgent.getId());
     }
+    @Test
+void shouldResolveIssueAndCreateResolutionRecords() {
+    AppUser reporter = appUserRepository.save(new AppUser(
+            "resolution-reporter",
+            "Resolution Test Reporter",
+            "resolution.reporter@example.com",
+            UserRole.REPORTER
+    ));
+
+    AppUser supportAgent = appUserRepository
+            .findByUsername("support.agent")
+            .orElseThrow();
+
+    ServiceIssue issue = serviceIssueService.createIssue(
+            new CreateServiceIssueRequest(
+                    "Passenger display failure",
+                    "The passenger display is unavailable.",
+                    IssueCategory.APPLICATION,
+                    IssuePriority.HIGH,
+                    reporter.getId()
+            )
+    );
+
+    serviceIssueService.assignIssue(
+            issue.getIssueNumber(),
+            new AssignIssueRequest(supportAgent.getId())
+    );
+
+    ServiceIssue resolvedIssue =
+            serviceIssueService.resolveIssue(
+                    issue.getIssueNumber(),
+                    new ResolveIssueRequest(
+                            "Restarted the display service "
+                                    + "and confirmed normal operation.",
+                            supportAgent.getId()
+                    )
+            );
+
+    var history = serviceIssueService.getStatusHistory(
+            issue.getIssueNumber()
+    );
+
+    var comments = serviceIssueService.getComments(
+            issue.getIssueNumber()
+    );
+
+    assertThat(resolvedIssue.getStatus())
+            .isEqualTo(IssueStatus.RESOLVED);
+    assertThat(resolvedIssue.getResolutionNotes())
+            .contains("confirmed normal operation");
+    assertThat(resolvedIssue.getResolvedAt()).isNotNull();
+
+    assertThat(history).hasSize(1);
+    assertThat(history.get(0).previousStatus())
+            .isEqualTo(IssueStatus.ASSIGNED);
+    assertThat(history.get(0).newStatus())
+            .isEqualTo(IssueStatus.RESOLVED);
+
+    assertThat(comments).hasSize(1);
+    assertThat(comments.get(0).commentType())
+            .isEqualTo(CommentType.RESOLUTION_NOTE);
+}
 }

@@ -11,6 +11,9 @@ import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
 import au.com.nexustech.transporttracker.service.ServiceIssueService;
+import au.com.nexustech.transporttracker.enums.IssueCategory;
+import au.com.nexustech.transporttracker.enums.IssuePriority;
+import au.com.nexustech.transporttracker.enums.IssueStatus;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -41,12 +44,24 @@ public class ServiceIssueController {
     }
 
     @GetMapping
-    public List<ServiceIssueResponse> getAllIssues() {
-        return serviceIssueService.getAllIssues()
-                .stream()
-                .map(ServiceIssueResponse::from)
-                .toList();
-    }
+public List<ServiceIssueResponse> searchIssues(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) IssueStatus status,
+        @RequestParam(required = false) IssuePriority priority,
+        @RequestParam(required = false) IssueCategory category,
+        @RequestParam(required = false) Long assignedToId
+) {
+    return serviceIssueService.searchIssues(
+                    keyword,
+                    status,
+                    priority,
+                    category,
+                    assignedToId
+            )
+            .stream()
+            .map(ServiceIssueResponse::from)
+            .toList();
+}
 
     @GetMapping("/{issueNumber}")
     public ServiceIssueResponse getIssueByNumber(

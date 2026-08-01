@@ -1,26 +1,26 @@
 package au.com.nexustech.transporttracker.service;
 
+import au.com.nexustech.transporttracker.dto.AddCommentRequest;
 import au.com.nexustech.transporttracker.dto.AssignIssueRequest;
 import au.com.nexustech.transporttracker.dto.CreateServiceIssueRequest;
+import au.com.nexustech.transporttracker.dto.ResolveIssueRequest;
 import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.AppUser;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
+import au.com.nexustech.transporttracker.enums.CommentType;
 import au.com.nexustech.transporttracker.enums.IssueCategory;
 import au.com.nexustech.transporttracker.enums.IssuePriority;
 import au.com.nexustech.transporttracker.enums.IssueStatus;
 import au.com.nexustech.transporttracker.enums.UserRole;
 import au.com.nexustech.transporttracker.exception.ResourceNotFoundException;
 import au.com.nexustech.transporttracker.repository.AppUserRepository;
+import au.com.nexustech.transporttracker.repository.ServiceIssueRepository;
 import au.com.nexustech.transporttracker.repository.StatusHistoryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-import au.com.nexustech.transporttracker.dto.AddCommentRequest;
-import au.com.nexustech.transporttracker.enums.CommentType;
-import au.com.nexustech.transporttracker.dto.ResolveIssueRequest;
-import au.com.nexustech.transporttracker.enums.CommentType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +34,9 @@ class ServiceIssueServiceTest {
 
     @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private ServiceIssueRepository serviceIssueRepository;
 
     @Autowired
     private StatusHistoryRepository statusHistoryRepository;
@@ -116,7 +119,9 @@ class ServiceIssueServiceTest {
         ServiceIssue assignedIssue =
                 serviceIssueService.assignIssue(
                         createdIssue.getIssueNumber(),
-                        new AssignIssueRequest(supportAgent.getId())
+                        new AssignIssueRequest(
+                                supportAgent.getId()
+                        )
                 );
 
         assertThat(assignedIssue.getAssignedTo()).isNotNull();
@@ -125,51 +130,55 @@ class ServiceIssueServiceTest {
         assertThat(assignedIssue.getStatus())
                 .isEqualTo(IssueStatus.ASSIGNED);
     }
-@Test
-void shouldAddAndRetrieveIssueComment() {
-    AppUser reporter = appUserRepository.save(new AppUser(
-            "comment-reporter",
-            "Comment Test Reporter",
-            "comment.reporter@example.com",
-            UserRole.REPORTER
-    ));
 
-    AppUser supportAgent = appUserRepository
-            .findByUsername("support.agent")
-            .orElseThrow();
+    @Test
+    void shouldAddAndRetrieveIssueComment() {
+        AppUser reporter = appUserRepository.save(new AppUser(
+                "comment-reporter",
+                "Comment Test Reporter",
+                "comment.reporter@example.com",
+                UserRole.REPORTER
+        ));
 
-    ServiceIssue issue = serviceIssueService.createIssue(
-            new CreateServiceIssueRequest(
-                    "Ticket machine issue",
-                    "The ticket machine is unavailable.",
-                    IssueCategory.APPLICATION,
-                    IssuePriority.HIGH,
-                    reporter.getId()
-            )
-    );
+        AppUser supportAgent = appUserRepository
+                .findByUsername("support.agent")
+                .orElseThrow();
 
-    var savedComment = serviceIssueService.addComment(
-            issue.getIssueNumber(),
-            new AddCommentRequest(
-                    "Initial investigation has started.",
-                    CommentType.COMMENT,
-                    supportAgent.getId()
-            )
-    );
+        ServiceIssue issue = serviceIssueService.createIssue(
+                new CreateServiceIssueRequest(
+                        "Ticket machine issue",
+                        "The ticket machine is unavailable.",
+                        IssueCategory.APPLICATION,
+                        IssuePriority.HIGH,
+                        reporter.getId()
+                )
+        );
 
-    var comments = serviceIssueService.getComments(
-            issue.getIssueNumber()
-    );
+        var savedComment = serviceIssueService.addComment(
+                issue.getIssueNumber(),
+                new AddCommentRequest(
+                        "Initial investigation has started.",
+                        CommentType.COMMENT,
+                        supportAgent.getId()
+                )
+        );
 
-    assertThat(savedComment.id()).isNotNull();
-    assertThat(savedComment.commentText())
-            .isEqualTo("Initial investigation has started.");
-    assertThat(savedComment.commentType())
-            .isEqualTo(CommentType.COMMENT);
-    assertThat(savedComment.authorId())
-            .isEqualTo(supportAgent.getId());
-    assertThat(comments).hasSize(1);
-}
+        var comments = serviceIssueService.getComments(
+                issue.getIssueNumber()
+        );
+
+        assertThat(savedComment.id()).isNotNull();
+        assertThat(savedComment.commentText())
+                .isEqualTo(
+                        "Initial investigation has started."
+                );
+        assertThat(savedComment.commentType())
+                .isEqualTo(CommentType.COMMENT);
+        assertThat(savedComment.authorId())
+                .isEqualTo(supportAgent.getId());
+        assertThat(comments).hasSize(1);
+    }
+
     @Test
     void shouldUpdateIssuePriorityStatusAndHistory() {
         AppUser reporter = appUserRepository.save(new AppUser(
@@ -222,7 +231,9 @@ void shouldAddAndRetrieveIssueComment() {
                 .isEqualTo(IssueStatus.IN_PROGRESS);
 
         var history = statusHistoryRepository
-                .findByIssueIdOrderByChangedAtDesc(issue.getId());
+                .findByIssueIdOrderByChangedAtDesc(
+                        issue.getId()
+                );
 
         assertThat(history).hasSize(1);
         assertThat(history.get(0).getPreviousStatus())
@@ -236,66 +247,114 @@ void shouldAddAndRetrieveIssueComment() {
         assertThat(history.get(0).getChangedBy().getId())
                 .isEqualTo(supportAgent.getId());
     }
+
     @Test
-void shouldResolveIssueAndCreateResolutionRecords() {
-    AppUser reporter = appUserRepository.save(new AppUser(
-            "resolution-reporter",
-            "Resolution Test Reporter",
-            "resolution.reporter@example.com",
-            UserRole.REPORTER
-    ));
+    void shouldResolveIssueAndCreateResolutionRecords() {
+        AppUser reporter = appUserRepository.save(new AppUser(
+                "resolution-reporter",
+                "Resolution Test Reporter",
+                "resolution.reporter@example.com",
+                UserRole.REPORTER
+        ));
 
-    AppUser supportAgent = appUserRepository
-            .findByUsername("support.agent")
-            .orElseThrow();
+        AppUser supportAgent = appUserRepository
+                .findByUsername("support.agent")
+                .orElseThrow();
 
-    ServiceIssue issue = serviceIssueService.createIssue(
-            new CreateServiceIssueRequest(
-                    "Passenger display failure",
-                    "The passenger display is unavailable.",
-                    IssueCategory.APPLICATION,
-                    IssuePriority.HIGH,
-                    reporter.getId()
-            )
-    );
+        ServiceIssue issue = serviceIssueService.createIssue(
+                new CreateServiceIssueRequest(
+                        "Passenger display failure",
+                        "The passenger display is unavailable.",
+                        IssueCategory.APPLICATION,
+                        IssuePriority.HIGH,
+                        reporter.getId()
+                )
+        );
 
-    serviceIssueService.assignIssue(
-            issue.getIssueNumber(),
-            new AssignIssueRequest(supportAgent.getId())
-    );
+        serviceIssueService.assignIssue(
+                issue.getIssueNumber(),
+                new AssignIssueRequest(supportAgent.getId())
+        );
 
-    ServiceIssue resolvedIssue =
-            serviceIssueService.resolveIssue(
-                    issue.getIssueNumber(),
-                    new ResolveIssueRequest(
-                            "Restarted the display service "
-                                    + "and confirmed normal operation.",
-                            supportAgent.getId()
-                    )
-            );
+        ServiceIssue resolvedIssue =
+                serviceIssueService.resolveIssue(
+                        issue.getIssueNumber(),
+                        new ResolveIssueRequest(
+                                "Restarted the display service "
+                                        + "and confirmed normal "
+                                        + "operation.",
+                                supportAgent.getId()
+                        )
+                );
 
-    var history = serviceIssueService.getStatusHistory(
-            issue.getIssueNumber()
-    );
+        var history = serviceIssueService.getStatusHistory(
+                issue.getIssueNumber()
+        );
 
-    var comments = serviceIssueService.getComments(
-            issue.getIssueNumber()
-    );
+        var comments = serviceIssueService.getComments(
+                issue.getIssueNumber()
+        );
 
-    assertThat(resolvedIssue.getStatus())
-            .isEqualTo(IssueStatus.RESOLVED);
-    assertThat(resolvedIssue.getResolutionNotes())
-            .contains("confirmed normal operation");
-    assertThat(resolvedIssue.getResolvedAt()).isNotNull();
+        assertThat(resolvedIssue.getStatus())
+                .isEqualTo(IssueStatus.RESOLVED);
+        assertThat(resolvedIssue.getResolutionNotes())
+                .contains("confirmed normal operation");
+        assertThat(resolvedIssue.getResolvedAt()).isNotNull();
 
-    assertThat(history).hasSize(1);
-    assertThat(history.get(0).previousStatus())
-            .isEqualTo(IssueStatus.ASSIGNED);
-    assertThat(history.get(0).newStatus())
-            .isEqualTo(IssueStatus.RESOLVED);
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).previousStatus())
+                .isEqualTo(IssueStatus.ASSIGNED);
+        assertThat(history.get(0).newStatus())
+                .isEqualTo(IssueStatus.RESOLVED);
 
-    assertThat(comments).hasSize(1);
-    assertThat(comments.get(0).commentType())
-            .isEqualTo(CommentType.RESOLUTION_NOTE);
-}
+        assertThat(comments).hasSize(1);
+        assertThat(comments.get(0).commentType())
+                .isEqualTo(CommentType.RESOLUTION_NOTE);
+    }
+
+    @Test
+    void shouldSearchAndFilterIssues() {
+        AppUser reporter = appUserRepository.save(new AppUser(
+                "search-reporter",
+                "Search Test Reporter",
+                "search.reporter@example.com",
+                UserRole.REPORTER
+        ));
+
+        serviceIssueService.createIssue(
+                new CreateServiceIssueRequest(
+                        "Passenger display unavailable",
+                        "The passenger display is not working.",
+                        IssueCategory.APPLICATION,
+                        IssuePriority.HIGH,
+                        reporter.getId()
+                )
+        );
+
+        serviceIssueService.createIssue(
+                new CreateServiceIssueRequest(
+                        "Network connection slow",
+                        "The office network has reduced performance.",
+                        IssueCategory.NETWORK,
+                        IssuePriority.LOW,
+                        reporter.getId()
+                )
+        );
+
+        serviceIssueRepository.flush();
+
+        var results = serviceIssueService.searchIssues(
+                "display",
+                IssueStatus.OPEN,
+                IssuePriority.HIGH,
+                IssueCategory.APPLICATION,
+                null
+        );
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getTitle())
+                .isEqualTo(
+                        "Passenger display unavailable"
+                );
+    }
 }

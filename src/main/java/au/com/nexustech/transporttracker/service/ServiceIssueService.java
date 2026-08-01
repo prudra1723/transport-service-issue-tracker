@@ -13,6 +13,8 @@ import au.com.nexustech.transporttracker.entity.IssueComment;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
 import au.com.nexustech.transporttracker.entity.StatusHistory;
 import au.com.nexustech.transporttracker.enums.CommentType;
+import au.com.nexustech.transporttracker.enums.IssueCategory;
+import au.com.nexustech.transporttracker.enums.IssuePriority;
 import au.com.nexustech.transporttracker.enums.IssueStatus;
 import au.com.nexustech.transporttracker.enums.UserRole;
 import au.com.nexustech.transporttracker.exception.BusinessRuleException;
@@ -21,6 +23,8 @@ import au.com.nexustech.transporttracker.repository.AppUserRepository;
 import au.com.nexustech.transporttracker.repository.IssueCommentRepository;
 import au.com.nexustech.transporttracker.repository.ServiceIssueRepository;
 import au.com.nexustech.transporttracker.repository.StatusHistoryRepository;
+import au.com.nexustech.transporttracker.specification.ServiceIssueSpecification;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +80,29 @@ public class ServiceIssueService {
     public List<ServiceIssue> getAllIssues() {
         return serviceIssueRepository
                 .findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ServiceIssue> searchIssues(
+            String keyword,
+            IssueStatus status,
+            IssuePriority priority,
+            IssueCategory category,
+            Long assignedToId
+    ) {
+        return serviceIssueRepository.findAll(
+                ServiceIssueSpecification.withFilters(
+                        keyword,
+                        status,
+                        priority,
+                        category,
+                        assignedToId
+                ),
+                Sort.by(
+                        Sort.Direction.DESC,
+                        "createdAt"
+                )
+        );
     }
 
     @Transactional(readOnly = true)

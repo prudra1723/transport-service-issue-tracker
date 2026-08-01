@@ -1,9 +1,15 @@
 import { apiClient } from "./axios";
 
 import type {
+  AddCommentRequest,
   CreateIssueRequest,
+  IssueComment,
   IssueFilters,
+  IssuePriority,
+  ResolveIssueRequest,
   ServiceIssue,
+  StatusHistory,
+  UpdateStatusRequest,
 } from "../types/issue";
 
 export async function getIssues(
@@ -32,6 +38,86 @@ export async function createIssue(
   request: CreateIssueRequest,
 ): Promise<ServiceIssue> {
   const response = await apiClient.post<ServiceIssue>("/issues", request);
+
+  return response.data;
+}
+
+export async function assignIssue(
+  issueNumber: string,
+  assignedToId: number,
+): Promise<ServiceIssue> {
+  const response = await apiClient.patch<ServiceIssue>(
+    `/issues/${issueNumber}/assignment`,
+    { assignedToId },
+  );
+
+  return response.data;
+}
+
+export async function updateIssuePriority(
+  issueNumber: string,
+  priority: IssuePriority,
+): Promise<ServiceIssue> {
+  const response = await apiClient.patch<ServiceIssue>(
+    `/issues/${issueNumber}/priority`,
+    { priority },
+  );
+
+  return response.data;
+}
+
+export async function updateIssueStatus(
+  issueNumber: string,
+  request: UpdateStatusRequest,
+): Promise<ServiceIssue> {
+  const response = await apiClient.patch<ServiceIssue>(
+    `/issues/${issueNumber}/status`,
+    request,
+  );
+
+  return response.data;
+}
+
+export async function getIssueComments(
+  issueNumber: string,
+): Promise<IssueComment[]> {
+  const response = await apiClient.get<IssueComment[]>(
+    `/issues/${issueNumber}/comments`,
+  );
+
+  return response.data;
+}
+
+export async function addIssueComment(
+  issueNumber: string,
+  request: AddCommentRequest,
+): Promise<IssueComment> {
+  const response = await apiClient.post<IssueComment>(
+    `/issues/${issueNumber}/comments`,
+    request,
+  );
+
+  return response.data;
+}
+
+export async function getIssueHistory(
+  issueNumber: string,
+): Promise<StatusHistory[]> {
+  const response = await apiClient.get<StatusHistory[]>(
+    `/issues/${issueNumber}/history`,
+  );
+
+  return response.data;
+}
+
+export async function resolveIssue(
+  issueNumber: string,
+  request: ResolveIssueRequest,
+): Promise<ServiceIssue> {
+  const response = await apiClient.patch<ServiceIssue>(
+    `/issues/${issueNumber}/resolution`,
+    request,
+  );
 
   return response.data;
 }

@@ -34,9 +34,34 @@ export default function IssuesPage() {
   }
 
   useEffect(() => {
-    void loadIssues();
-  }, []);
+    let cancelled = false;
 
+    getIssues()
+      .then((data) => {
+        if (!cancelled) {
+          setIssues(data);
+          setError("");
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Unable to load issues.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void loadIssues(keyword);

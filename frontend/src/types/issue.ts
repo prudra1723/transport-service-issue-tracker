@@ -14,6 +14,8 @@ export type IssueCategory =
   | "SECURITY"
   | "OTHER";
 
+export type CommentType = "COMMENT" | "INTERNAL_NOTE" | "RESOLUTION_NOTE";
+
 export interface ServiceIssue {
   id: number;
   issueNumber: string;
@@ -45,4 +47,41 @@ export interface IssueFilters {
   priority?: IssuePriority | "";
   category?: IssueCategory | "";
   assignedToId?: number;
+}
+
+export interface IssueComment {
+  id: number;
+  issueId: number;
+  authorId: number;
+  commentText: string;
+  commentType: CommentType;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StatusHistory {
+  id: number;
+  issueId: number;
+  previousStatus: IssueStatus | null;
+  newStatus: IssueStatus;
+  reason: string | null;
+  changedById: number;
+  changedAt: string;
+}
+
+export interface AddCommentRequest {
+  commentText: string;
+  commentType: CommentType;
+  authorId: number;
+}
+
+export interface UpdateStatusRequest {
+  status: IssueStatus;
+  reason: string;
+  changedById: number;
+}
+
+export interface ResolveIssueRequest {
+  resolutionNotes: string;
+  resolvedById: number;
 }

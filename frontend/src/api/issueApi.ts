@@ -2,6 +2,7 @@ import { apiClient } from "./axios";
 
 import type {
   AddCommentRequest,
+  AssignIssueRequest,
   CreateIssueRequest,
   IssueComment,
   IssueFilters,
@@ -9,6 +10,7 @@ import type {
   ResolveIssueRequest,
   ServiceIssue,
   StatusHistory,
+  UpdateIssueRequest,
   UpdateStatusRequest,
 } from "../types/issue";
 
@@ -42,13 +44,33 @@ export async function createIssue(
   return response.data;
 }
 
+export async function updateIssue(
+  issueNumber: string,
+  request: UpdateIssueRequest,
+): Promise<ServiceIssue> {
+  const response = await apiClient.put<ServiceIssue>(
+    `/issues/${issueNumber}`,
+    request,
+  );
+
+  return response.data;
+}
+
+export async function deleteIssue(issueNumber: string): Promise<void> {
+  await apiClient.delete(`/issues/${issueNumber}`);
+}
+
 export async function assignIssue(
   issueNumber: string,
   assignedToId: number,
 ): Promise<ServiceIssue> {
+  const request: AssignIssueRequest = {
+    assignedToId,
+  };
+
   const response = await apiClient.patch<ServiceIssue>(
     `/issues/${issueNumber}/assignment`,
-    { assignedToId },
+    request,
   );
 
   return response.data;
@@ -72,6 +94,18 @@ export async function updateIssueStatus(
 ): Promise<ServiceIssue> {
   const response = await apiClient.patch<ServiceIssue>(
     `/issues/${issueNumber}/status`,
+    request,
+  );
+
+  return response.data;
+}
+
+export async function resolveIssue(
+  issueNumber: string,
+  request: ResolveIssueRequest,
+): Promise<ServiceIssue> {
+  const response = await apiClient.patch<ServiceIssue>(
+    `/issues/${issueNumber}/resolution`,
     request,
   );
 
@@ -105,18 +139,6 @@ export async function getIssueHistory(
 ): Promise<StatusHistory[]> {
   const response = await apiClient.get<StatusHistory[]>(
     `/issues/${issueNumber}/history`,
-  );
-
-  return response.data;
-}
-
-export async function resolveIssue(
-  issueNumber: string,
-  request: ResolveIssueRequest,
-): Promise<ServiceIssue> {
-  const response = await apiClient.patch<ServiceIssue>(
-    `/issues/${issueNumber}/resolution`,
-    request,
   );
 
   return response.data;

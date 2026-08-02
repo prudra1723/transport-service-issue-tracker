@@ -29,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Transactional
 class ServiceIssueServiceTest {
 
+    private static final String TEST_PASSWORD_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoO5XvD9Y5lnnlyX8wKQ2q3FOjXK2g9kOm";
+
     @Autowired
     private ServiceIssueService serviceIssueService;
 
@@ -43,12 +46,15 @@ class ServiceIssueServiceTest {
 
     @Test
     void shouldCreateIssueWithGeneratedIssueNumber() {
-        AppUser reporter = appUserRepository.save(new AppUser(
-                "service-reporter",
-                "Service Reporter",
-                "service.reporter@example.com",
-                UserRole.REPORTER
-        ));
+        AppUser reporter = appUserRepository.save(
+                new AppUser(
+                        "service-reporter",
+                        "Service Reporter",
+                        "service.reporter@example.com",
+                        TEST_PASSWORD_HASH,
+                        UserRole.REPORTER
+                )
+        );
 
         CreateServiceIssueRequest request =
                 new CreateServiceIssueRequest(
@@ -93,12 +99,15 @@ class ServiceIssueServiceTest {
 
     @Test
     void shouldAssignIssueToSupportAgent() {
-        AppUser reporter = appUserRepository.save(new AppUser(
-                "assignment-reporter",
-                "Assignment Reporter",
-                "assignment.reporter@example.com",
-                UserRole.REPORTER
-        ));
+        AppUser reporter = appUserRepository.save(
+                new AppUser(
+                        "assignment-reporter",
+                        "Assignment Reporter",
+                        "assignment.reporter@example.com",
+                        TEST_PASSWORD_HASH,
+                        UserRole.REPORTER
+                )
+        );
 
         AppUser supportAgent = appUserRepository
                 .findByUsername("support.agent")
@@ -133,12 +142,15 @@ class ServiceIssueServiceTest {
 
     @Test
     void shouldAddAndRetrieveIssueComment() {
-        AppUser reporter = appUserRepository.save(new AppUser(
-                "comment-reporter",
-                "Comment Test Reporter",
-                "comment.reporter@example.com",
-                UserRole.REPORTER
-        ));
+        AppUser reporter = appUserRepository.save(
+                new AppUser(
+                        "comment-reporter",
+                        "Comment Test Reporter",
+                        "comment.reporter@example.com",
+                        TEST_PASSWORD_HASH,
+                        UserRole.REPORTER
+                )
+        );
 
         AppUser supportAgent = appUserRepository
                 .findByUsername("support.agent")
@@ -181,12 +193,15 @@ class ServiceIssueServiceTest {
 
     @Test
     void shouldUpdateIssuePriorityStatusAndHistory() {
-        AppUser reporter = appUserRepository.save(new AppUser(
-                "status-reporter",
-                "Status Test Reporter",
-                "status.reporter@example.com",
-                UserRole.REPORTER
-        ));
+        AppUser reporter = appUserRepository.save(
+                new AppUser(
+                        "status-reporter",
+                        "Status Test Reporter",
+                        "status.reporter@example.com",
+                        TEST_PASSWORD_HASH,
+                        UserRole.REPORTER
+                )
+        );
 
         AppUser supportAgent = appUserRepository
                 .findByUsername("support.agent")
@@ -204,7 +219,9 @@ class ServiceIssueServiceTest {
 
         serviceIssueService.assignIssue(
                 issue.getIssueNumber(),
-                new AssignIssueRequest(supportAgent.getId())
+                new AssignIssueRequest(
+                        supportAgent.getId()
+                )
         );
 
         ServiceIssue prioritisedIssue =
@@ -250,12 +267,15 @@ class ServiceIssueServiceTest {
 
     @Test
     void shouldResolveIssueAndCreateResolutionRecords() {
-        AppUser reporter = appUserRepository.save(new AppUser(
-                "resolution-reporter",
-                "Resolution Test Reporter",
-                "resolution.reporter@example.com",
-                UserRole.REPORTER
-        ));
+        AppUser reporter = appUserRepository.save(
+                new AppUser(
+                        "resolution-reporter",
+                        "Resolution Test Reporter",
+                        "resolution.reporter@example.com",
+                        TEST_PASSWORD_HASH,
+                        UserRole.REPORTER
+                )
+        );
 
         AppUser supportAgent = appUserRepository
                 .findByUsername("support.agent")
@@ -273,7 +293,9 @@ class ServiceIssueServiceTest {
 
         serviceIssueService.assignIssue(
                 issue.getIssueNumber(),
-                new AssignIssueRequest(supportAgent.getId())
+                new AssignIssueRequest(
+                        supportAgent.getId()
+                )
         );
 
         ServiceIssue resolvedIssue =
@@ -314,12 +336,15 @@ class ServiceIssueServiceTest {
 
     @Test
     void shouldSearchAndFilterIssues() {
-        AppUser reporter = appUserRepository.save(new AppUser(
-                "search-reporter",
-                "Search Test Reporter",
-                "search.reporter@example.com",
-                UserRole.REPORTER
-        ));
+        AppUser reporter = appUserRepository.save(
+                new AppUser(
+                        "search-reporter",
+                        "Search Test Reporter",
+                        "search.reporter@example.com",
+                        TEST_PASSWORD_HASH,
+                        UserRole.REPORTER
+                )
+        );
 
         serviceIssueService.createIssue(
                 new CreateServiceIssueRequest(

@@ -22,26 +22,61 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", nullable = false, unique = true, length = 50)
+    @Column(
+            name = "username",
+            nullable = false,
+            unique = true,
+            length = 50
+    )
     private String username;
 
-    @Column(name = "full_name", nullable = false, length = 100)
+    @Column(
+            name = "full_name",
+            nullable = false,
+            length = 100
+    )
     private String fullName;
 
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(
+            name = "email",
+            nullable = false,
+            unique = true,
+            length = 150
+    )
     private String email;
 
+    @Column(
+            name = "password_hash",
+            nullable = false,
+            length = 255
+    )
+    private String passwordHash;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 30)
+    @Column(
+            name = "role",
+            nullable = false,
+            length = 30
+    )
     private UserRole role;
 
-    @Column(name = "active", nullable = false)
+    @Column(
+            name = "active",
+            nullable = false
+    )
     private Integer active = 1;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(
+            name = "updated_at",
+            nullable = false
+    )
     private LocalDateTime updatedAt;
 
     public AppUser() {
@@ -51,11 +86,13 @@ public class AppUser {
             String username,
             String fullName,
             String email,
+            String passwordHash,
             UserRole role
     ) {
         this.username = username;
         this.fullName = fullName;
         this.email = email;
+        this.passwordHash = passwordHash;
         this.role = role;
         this.active = 1;
     }
@@ -63,6 +100,7 @@ public class AppUser {
     @PrePersist
     public void onCreate() {
         LocalDateTime now = LocalDateTime.now();
+
         this.createdAt = now;
         this.updatedAt = now;
 
@@ -102,6 +140,14 @@ public class AppUser {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public UserRole getRole() {

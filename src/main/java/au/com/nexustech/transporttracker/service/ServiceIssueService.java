@@ -7,6 +7,7 @@ import au.com.nexustech.transporttracker.dto.IssueCommentResponse;
 import au.com.nexustech.transporttracker.dto.ResolveIssueRequest;
 import au.com.nexustech.transporttracker.dto.StatusHistoryResponse;
 import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
+import au.com.nexustech.transporttracker.dto.UpdateServiceIssueRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.AppUser;
 import au.com.nexustech.transporttracker.entity.IssueComment;
@@ -66,8 +67,8 @@ public class ServiceIssueService {
 
         ServiceIssue issue = new ServiceIssue(
                 issueNumber,
-                request.title(),
-                request.description(),
+                request.title().trim(),
+                request.description().trim(),
                 request.category(),
                 request.priority(),
                 reporter
@@ -107,19 +108,50 @@ public class ServiceIssueService {
 
     @Transactional(readOnly = true)
     public ServiceIssue getIssueById(Long id) {
-        return serviceIssueRepository.findById(id)
+        return serviceIssueRepository
+                .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Service issue not found with ID: " + id
                 ));
     }
 
     @Transactional(readOnly = true)
-    public ServiceIssue getIssueByNumber(String issueNumber) {
+    public ServiceIssue getIssueByNumber(
+            String issueNumber
+    ) {
         return serviceIssueRepository
                 .findByIssueNumber(issueNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Service issue not found: " + issueNumber
                 ));
+    }
+
+    public ServiceIssue updateIssue(
+            String issueNumber,
+            UpdateServiceIssueRequest request
+    ) {
+        ServiceIssue issue = getIssueByNumber(issueNumber);
+
+        if (issue.getStatus() == IssueStatus.CLOSED) {
+            throw new BusinessRuleException(
+                    "A closed issue cannot be edited"
+            );
+        }
+
+        issue.setTitle(request.title().trim());
+        issue.setDescription(request.description().trim());
+        issue.setCategory(request.category());
+        issue.setPriority(request.priority());
+
+        return serviceIssueRepository.save(issue);
+    }
+
+    public void deleteIssue(
+            String issueNumber
+    ) {
+        ServiceIssue issue = getIssueByNumber(issueNumber);
+
+        serviceIssueRepository.delete(issue);
     }
 
     public ServiceIssue assignIssue(
@@ -195,6 +227,13 @@ public class ServiceIssueService {
                                 + request.changedById()
                 ));
 
+        if (changedBy.getActive() == null
+                || changedBy.getActive() != 1) {
+            throw new BusinessRuleException(
+                    "An inactive user cannot change issue status"
+            );
+        }
+
         IssueStatus previousStatus = issue.getStatus();
         IssueStatus newStatus = request.status();
 
@@ -224,6 +263,7 @@ public class ServiceIssueService {
 
         if (newStatus == IssueStatus.RESOLVED) {
             issue.setResolvedAt(LocalDateTime.now());
+            issue.setClosedAt(null);
         }
 
         if (newStatus == IssueStatus.CLOSED) {
@@ -256,7 +296,9 @@ public class ServiceIssueService {
         ServiceIssue issue = getIssueByNumber(issueNumber);
 
         return statusHistoryRepository
-                .findByIssueIdOrderByChangedAtDesc(issue.getId())
+                .findByIssueIdOrderByChangedAtDesc(
+                        issue.getId()
+                )
                 .stream()
                 .map(StatusHistoryResponse::from)
                 .toList();
@@ -285,7 +327,7 @@ public class ServiceIssueService {
         IssueComment comment = new IssueComment(
                 issue,
                 author,
-                request.commentText(),
+                request.commentText().trim(),
                 request.commentType()
         );
 
@@ -301,7 +343,9 @@ public class ServiceIssueService {
         ServiceIssue issue = getIssueByNumber(issueNumber);
 
         return issueCommentRepository
-                .findByIssueIdOrderByCreatedAtAsc(issue.getId())
+                .findByIssueIdOrderByCreatedAtAsc(
+                        issue.getId()
+                )
                 .stream()
                 .map(IssueCommentResponse::from)
                 .toList();
@@ -348,9 +392,12 @@ public class ServiceIssueService {
 
         IssueStatus previousStatus = issue.getStatus();
 
-        issue.setResolutionNotes(request.resolutionNotes());
+        issue.setResolutionNotes(
+                request.resolutionNotes().trim()
+        );
         issue.setStatus(IssueStatus.RESOLVED);
         issue.setResolvedAt(LocalDateTime.now());
+        issue.setClosedAt(null);
 
         ServiceIssue savedIssue =
                 serviceIssueRepository.save(issue);
@@ -366,21 +413,25 @@ public class ServiceIssueService {
         issueCommentRepository.save(new IssueComment(
                 savedIssue,
                 resolvedBy,
-                request.resolutionNotes(),
+                request.resolutionNotes().trim(),
                 CommentType.RESOLUTION_NOTE
         ));
 
         return savedIssue;
     }
 
-    private boolean canManageIssues(AppUser user) {
+    private boolean canManageIssues(
+            AppUser user
+    ) {
         return user.getRole() == UserRole.SUPPORT_AGENT
                 || user.getRole() == UserRole.MANAGER
                 || user.getRole() == UserRole.ADMIN;
     }
 
     private synchronized String generateIssueNumber() {
-        long nextNumber = serviceIssueRepository.count() + 1;
+        long nextNumber =
+                serviceIssueRepository.count() + 1;
+
         String issueNumber = String.format(
                 "TSI-%04d",
                 nextNumber
@@ -389,6 +440,7 @@ public class ServiceIssueService {
         while (serviceIssueRepository
                 .existsByIssueNumber(issueNumber)) {
             nextNumber++;
+
             issueNumber = String.format(
                     "TSI-%04d",
                     nextNumber

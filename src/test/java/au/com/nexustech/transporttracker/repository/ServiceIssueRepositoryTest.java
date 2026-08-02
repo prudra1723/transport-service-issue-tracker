@@ -19,6 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Transactional
 class ServiceIssueRepositoryTest {
 
+    private static final String TEST_PASSWORD_HASH =
+            "$2a$10$7EqJtq98hPqEX7fNZaFWoO5XvD9Y5lnnlyX8wKQ2q3FOjXK2g9kOm";
+
     @Autowired
     private AppUserRepository appUserRepository;
 
@@ -28,11 +31,12 @@ class ServiceIssueRepositoryTest {
     @Test
     void shouldSaveAndFindServiceIssueByIssueNumber() {
         AppUser reporter = new AppUser(
-        "repository-reporter",
-        "Repository Test Reporter",
-        "repository.reporter@example.com",
-        UserRole.REPORTER
-);
+                "repository-reporter",
+                "Repository Test Reporter",
+                "repository.reporter@example.com",
+                TEST_PASSWORD_HASH,
+                UserRole.REPORTER
+        );
 
         AppUser savedReporter = appUserRepository.save(reporter);
 
@@ -54,7 +58,8 @@ class ServiceIssueRepositoryTest {
         assertThat(result).isPresent();
         assertThat(result.get().getTitle())
                 .isEqualTo("Passenger information display unavailable");
-        assertThat(result.get().getStatus()).isEqualTo(IssueStatus.OPEN);
+        assertThat(result.get().getStatus())
+                .isEqualTo(IssueStatus.OPEN);
         assertThat(result.get().getReportedBy().getUsername())
                 .isEqualTo("repository-reporter");
     }

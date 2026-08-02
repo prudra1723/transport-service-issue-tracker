@@ -1,0 +1,174 @@
+CREATE TABLE app_users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(30) NOT NULL,
+    active INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT uk_app_users_username UNIQUE (username),
+    CONSTRAINT uk_app_users_email UNIQUE (email),
+    CONSTRAINT ck_app_users_role CHECK (
+        role IN (
+            'REPORTER',
+            'SUPPORT_AGENT',
+            'MANAGER',
+            'ADMIN'
+        )
+    ),
+    CONSTRAINT ck_app_users_active CHECK (
+        active IN (0, 1)
+    )
+);
+
+CREATE TABLE service_issues (
+    id BIGSERIAL PRIMARY KEY,
+    issue_number VARCHAR(30) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(30) NOT NULL,
+    priority VARCHAR(20) NOT NULL,
+    status VARCHAR(30) DEFAULT 'OPEN' NOT NULL,
+    reported_by BIGINT NOT NULL,
+    assigned_to BIGINT,
+    resolution_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    resolved_at TIMESTAMP,
+    closed_at TIMESTAMP,
+
+    CONSTRAINT uk_service_issues_number UNIQUE (issue_number),
+
+    CONSTRAINT fk_issues_reporter
+        FOREIGN KEY (reported_by)
+        REFERENCES app_users(id),
+
+    CONSTRAINT fk_issues_assignee
+        FOREIGN KEY (assigned_to)
+        REFERENCES app_users(id),
+
+    CONSTRAINT ck_issues_category CHECK (
+        category IN (
+            'APPLICATION',
+            'DATABASE',
+            'NETWORK',
+            'ACCESS',
+            'PERFORMANCE',
+            'INTEGRATION',
+            'OTHER'
+        )
+    ),
+
+    CONSTRAINT ck_issues_priority CHECK (
+        priority IN (
+            'LOW',
+            'MEDIUM',
+            'HIGH',
+            'CRITICAL'
+        )
+    ),
+
+    CONSTRAINT ck_issues_status CHECK (
+        status IN (
+            'OPEN',
+            'ASSIGNED',
+            'IN_PROGRESS',
+            'ON_HOLD',
+            'RESOLVED',
+            'CLOSED',
+            'REOPENED'
+        )
+    )
+);
+
+CREATE TABLE issue_comments (
+    id BIGSERIAL PRIMARY KEY,
+    issue_id BIGINT NOT NULL,
+    author_id BIGINT NOT NULL,
+    comment_text TEXT NOT NULL,
+    comment_type VARCHAR(30) DEFAULT 'COMMENT' NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT fk_comments_issue
+        FOREIGN KEY (issue_id)
+        REFERENCES service_issues(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_comments_author
+        FOREIGN KEY (author_id)
+        REFERENCES app_users(id),
+
+    CONSTRAINT ck_comments_type CHECK (
+        comment_type IN (
+            'COMMENT',
+            'INTERNAL_NOTE',
+            'RESOLUTION_NOTE'
+        )
+    )
+);
+
+CREATE TABLE status_history (
+    id BIGSERIAL PRIMARY KEY,
+    issue_id BIGINT NOT NULL,
+    previous_status VARCHAR(30),
+    new_status VARCHAR(30) NOT NULL,
+    changed_by BIGINT NOT NULL,
+    change_reason VARCHAR(500),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    CONSTRAINT fk_history_issue
+        FOREIGN KEY (issue_id)
+        REFERENCES service_issues(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_history_user
+        FOREIGN KEY (changed_by)
+        REFERENCES app_users(id),
+
+    CONSTRAINT ck_history_previous_status CHECK (
+        previous_status IS NULL
+        OR previous_status IN (
+            'OPEN',
+            'ASSIGNED',
+            'IN_PROGRESS',
+            'ON_HOLD',
+            'RESOLVED',
+            'CLOSED',
+            'REOPENED'
+        )
+    ),
+
+    CONSTRAINT ck_history_new_status CHECK (
+        new_status IN (
+            'OPEN',
+            'ASSIGNED',
+            'IN_PROGRESS',
+            'ON_HOLD',
+            'RESOLVED',
+            'CLOSED',
+            'REOPENED'
+        )
+    )
+);
+
+CREATE INDEX idx_issues_status
+    ON service_issues(status);
+
+CREATE INDEX idx_issues_priority
+    ON service_issues(priority);
+
+CREATE INDEX idx_issues_assigned_to
+    ON service_issues(assigned_to);
+
+CREATE INDEX idx_issues_created_at
+    ON service_issues(created_at);
+
+CREATE INDEX idx_comments_issue
+    ON issue_comments(issue_id);
+
+CREATE INDEX idx_history_issue
+    ON status_history(issue_id);

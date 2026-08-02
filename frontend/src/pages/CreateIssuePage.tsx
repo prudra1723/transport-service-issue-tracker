@@ -8,13 +8,7 @@ import type {
   IssuePriority,
 } from "../types/issue";
 
-const categories: IssueCategory[] = [
-  "APPLICATION",
-  "HARDWARE",
-  "NETWORK",
-  "SECURITY",
-  "OTHER",
-];
+const categories: IssueCategory[] = ["APPLICATION", "NETWORK", "OTHER"];
 
 const priorities: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 

@@ -8,15 +8,27 @@ import au.com.nexustech.transporttracker.dto.ResolveIssueRequest;
 import au.com.nexustech.transporttracker.dto.ServiceIssueResponse;
 import au.com.nexustech.transporttracker.dto.StatusHistoryResponse;
 import au.com.nexustech.transporttracker.dto.UpdatePriorityRequest;
+import au.com.nexustech.transporttracker.dto.UpdateServiceIssueRequest;
 import au.com.nexustech.transporttracker.dto.UpdateStatusRequest;
 import au.com.nexustech.transporttracker.entity.ServiceIssue;
-import au.com.nexustech.transporttracker.service.ServiceIssueService;
 import au.com.nexustech.transporttracker.enums.IssueCategory;
 import au.com.nexustech.transporttracker.enums.IssuePriority;
 import au.com.nexustech.transporttracker.enums.IssueStatus;
+import au.com.nexustech.transporttracker.service.ServiceIssueService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -44,24 +56,24 @@ public class ServiceIssueController {
     }
 
     @GetMapping
-public List<ServiceIssueResponse> searchIssues(
-        @RequestParam(required = false) String keyword,
-        @RequestParam(required = false) IssueStatus status,
-        @RequestParam(required = false) IssuePriority priority,
-        @RequestParam(required = false) IssueCategory category,
-        @RequestParam(required = false) Long assignedToId
-) {
-    return serviceIssueService.searchIssues(
-                    keyword,
-                    status,
-                    priority,
-                    category,
-                    assignedToId
-            )
-            .stream()
-            .map(ServiceIssueResponse::from)
-            .toList();
-}
+    public List<ServiceIssueResponse> searchIssues(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) IssueStatus status,
+            @RequestParam(required = false) IssuePriority priority,
+            @RequestParam(required = false) IssueCategory category,
+            @RequestParam(required = false) Long assignedToId
+    ) {
+        return serviceIssueService.searchIssues(
+                        keyword,
+                        status,
+                        priority,
+                        category,
+                        assignedToId
+                )
+                .stream()
+                .map(ServiceIssueResponse::from)
+                .toList();
+    }
 
     @GetMapping("/{issueNumber}")
     public ServiceIssueResponse getIssueByNumber(
@@ -70,6 +82,28 @@ public List<ServiceIssueResponse> searchIssues(
         return ServiceIssueResponse.from(
                 serviceIssueService.getIssueByNumber(issueNumber)
         );
+    }
+
+    @PutMapping("/{issueNumber}")
+    public ServiceIssueResponse updateIssue(
+            @PathVariable String issueNumber,
+            @Valid @RequestBody UpdateServiceIssueRequest request
+    ) {
+        return ServiceIssueResponse.from(
+                serviceIssueService.updateIssue(
+                        issueNumber,
+                        request
+                )
+        );
+    }
+
+    @DeleteMapping("/{issueNumber}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteIssue(
+            @PathVariable String issueNumber
+    ) {
+        serviceIssueService.deleteIssue(issueNumber);
     }
 
     @PatchMapping("/{issueNumber}/assignment")
@@ -111,12 +145,17 @@ public List<ServiceIssueResponse> searchIssues(
         );
     }
 
-    @GetMapping("/{issueNumber}/history")
-    public List<StatusHistoryResponse> getStatusHistory(
-            @PathVariable String issueNumber
+    @PatchMapping("/{issueNumber}/resolution")
+    public ServiceIssueResponse resolveIssue(
+            @PathVariable String issueNumber,
+            @Valid @RequestBody ResolveIssueRequest request
     ) {
-        return serviceIssueService
-                .getStatusHistory(issueNumber);
+        return ServiceIssueResponse.from(
+                serviceIssueService.resolveIssue(
+                        issueNumber,
+                        request
+                )
+        );
     }
 
     @PostMapping("/{issueNumber}/comments")
@@ -138,16 +177,11 @@ public List<ServiceIssueResponse> searchIssues(
         return serviceIssueService.getComments(issueNumber);
     }
 
-    @PatchMapping("/{issueNumber}/resolution")
-    public ServiceIssueResponse resolveIssue(
-            @PathVariable String issueNumber,
-            @Valid @RequestBody ResolveIssueRequest request
+    @GetMapping("/{issueNumber}/history")
+    public List<StatusHistoryResponse> getStatusHistory(
+            @PathVariable String issueNumber
     ) {
-        return ServiceIssueResponse.from(
-                serviceIssueService.resolveIssue(
-                        issueNumber,
-                        request
-                )
-        );
+        return serviceIssueService
+                .getStatusHistory(issueNumber);
     }
 }

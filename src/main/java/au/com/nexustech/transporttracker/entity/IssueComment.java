@@ -1,7 +1,20 @@
 package au.com.nexustech.transporttracker.entity;
 
 import au.com.nexustech.transporttracker.enums.CommentType;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
@@ -13,26 +26,51 @@ public class IssueComment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "issue_id", nullable = false)
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            optional = false
+    )
+    @JoinColumn(
+            name = "issue_id",
+            nullable = false
+    )
     private ServiceIssue issue;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "author_id", nullable = false)
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            optional = false
+    )
+    @JoinColumn(
+            name = "author_id",
+            nullable = false
+    )
     private AppUser author;
-
     @Lob
-    @Column(name = "comment_text", nullable = false)
-    private String commentText;
+    @Column(
+        name = "comment_text",
+        nullable = false
+)
+private String commentText;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "comment_type", nullable = false, length = 30)
+    @Column(
+            name = "comment_type",
+            nullable = false,
+            length = 30
+    )
     private CommentType commentType = CommentType.COMMENT;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(
+            name = "created_at",
+            nullable = false,
+            updatable = false
+    )
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(
+            name = "updated_at",
+            nullable = false
+    )
     private LocalDateTime updatedAt;
 
     public IssueComment() {
@@ -53,17 +91,18 @@ public class IssueComment {
     @PrePersist
     public void onCreate() {
         LocalDateTime now = LocalDateTime.now();
-        createdAt = now;
-        updatedAt = now;
 
-        if (commentType == null) {
-            commentType = CommentType.COMMENT;
+        this.createdAt = now;
+        this.updatedAt = now;
+
+        if (this.commentType == null) {
+            this.commentType = CommentType.COMMENT;
         }
     }
 
     @PreUpdate
     public void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     public Long getId() {

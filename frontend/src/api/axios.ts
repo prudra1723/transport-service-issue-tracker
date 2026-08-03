@@ -27,9 +27,16 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => response,
+
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+
+    if (status === 401) {
       clearAuthentication();
+
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
 
     const message =

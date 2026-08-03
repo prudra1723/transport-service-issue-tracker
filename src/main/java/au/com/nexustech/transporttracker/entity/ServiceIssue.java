@@ -12,7 +12,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -43,10 +42,10 @@ public class ServiceIssue {
     )
     private String title;
 
-    @Lob
     @Column(
             name = "description",
-            nullable = false
+            nullable = false,
+            columnDefinition = "TEXT"
     )
     private String description;
 
@@ -88,8 +87,10 @@ public class ServiceIssue {
     @JoinColumn(name = "assigned_to")
     private AppUser assignedTo;
 
-    @Lob
-    @Column(name = "resolution_notes")
+    @Column(
+            name = "resolution_notes",
+            columnDefinition = "TEXT"
+    )
     private String resolutionNotes;
 
     @Column(

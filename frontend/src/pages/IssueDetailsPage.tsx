@@ -9,6 +9,19 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import AttachmentList from "../components/issues/AttachmentList";
+import AttachmentUploader from "../components/issues/AttachmentUploader";
+
+import {
+  deleteAttachment,
+  downloadAttachment,
+  getAttachments,
+  uploadAttachment,
+} from "../api/attachmentApi";
+
+import { getCurrentUser } from "../auth/authStorage";
+
+import type { IssueAttachment } from "../types/attachment";
 
 import {
   addIssueComment,
@@ -22,7 +35,6 @@ import {
   updateIssuePriority,
   updateIssueStatus,
 } from "../api/issueApi";
-import { getCurrentUser } from "../auth/authStorage";
 import StatusBadge from "../components/common/StatusBadge";
 import DeleteIssueDialog from "../components/issues/DeleteIssueDialog";
 import EditIssueDialog from "../components/issues/EditIssueDialog";
@@ -46,7 +58,6 @@ const statuses: IssueStatus[] = [
   "CLOSED",
   "REOPENED",
 ];
-
 const priorities: IssuePriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 export default function IssueDetailsPage() {
@@ -69,6 +80,21 @@ export default function IssueDetailsPage() {
   const availableCommentTypes: CommentType[] = canManageIssues
     ? ["COMMENT", "INTERNAL_NOTE"]
     : ["COMMENT"];
+
+  const [attachments, setAttachments] = useState<IssueAttachment[]>([]);
+
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<
+    number | null
+  >(null);
+
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<
+    number | null
+  >(null);
+
+  const canDeleteAttachments =
+    currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER";
 
   const [issue, setIssue] = useState<ServiceIssue | null>(null);
 
@@ -101,6 +127,62 @@ export default function IssueDetailsPage() {
 
   const [error, setError] = useState("");
 
+  async function handleUploadAttachment(file: File) {
+    if (!issueNumber) {
+      return;
+    }
+
+    try {
+      setUploadingAttachment(true);
+      setError("");
+
+      const uploadedAttachment = await uploadAttachment(issueNumber, file);
+
+      setAttachments((current) => [uploadedAttachment, ...current]);
+    } catch (requestError) {
+      setError(getErrorMessage(requestError, "Unable to upload attachment."));
+      throw requestError;
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
+  async function handleDownloadAttachment(attachment: IssueAttachment) {
+    try {
+      setDownloadingAttachmentId(attachment.id);
+      setError("");
+
+      await downloadAttachment(attachment);
+    } catch (requestError) {
+      setError(getErrorMessage(requestError, "Unable to download attachment."));
+    } finally {
+      setDownloadingAttachmentId(null);
+    }
+  }
+
+  async function handleDeleteAttachment(attachment: IssueAttachment) {
+    const confirmed = window.confirm(`Delete ${attachment.originalFilename}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingAttachmentId(attachment.id);
+      setError("");
+
+      await deleteAttachment(attachment.id);
+
+      setAttachments((current) =>
+        current.filter((item) => item.id !== attachment.id),
+      );
+    } catch (requestError) {
+      setError(getErrorMessage(requestError, "Unable to delete attachment."));
+    } finally {
+      setDeletingAttachmentId(null);
+    }
+  }
+
   useEffect(() => {
     if (!issueNumber) {
       return;
@@ -112,8 +194,9 @@ export default function IssueDetailsPage() {
       getIssue(issueNumber),
       getIssueComments(issueNumber),
       getIssueHistory(issueNumber),
+      getAttachments(issueNumber),
     ])
-      .then(([issueData, commentData, historyData]) => {
+      .then(([issueData, commentData, historyData, attachmentData]) => {
         if (cancelled) {
           return;
         }
@@ -121,6 +204,7 @@ export default function IssueDetailsPage() {
         setIssue(issueData);
         setComments(commentData);
         setHistory(historyData);
+        setAttachments(attachmentData);
         setSelectedStatus(issueData.status);
         setSelectedPriority(issueData.priority);
         setAssignedToId(issueData.assignedToId ?? 1);
@@ -520,6 +604,36 @@ export default function IssueDetailsPage() {
           </article>
 
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950">
+                Attachments
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Upload screenshots, PDFs, logs and error reports.
+              </p>
+            </div>
+
+            <div className="mt-5">
+              <AttachmentUploader
+                uploading={uploadingAttachment}
+                onUpload={handleUploadAttachment}
+              />
+            </div>
+
+            <div className="mt-6">
+              <AttachmentList
+                attachments={attachments}
+                downloadingId={downloadingAttachmentId}
+                deletingId={deletingAttachmentId}
+                canDelete={canDeleteAttachments}
+                onDownload={handleDownloadAttachment}
+                onDelete={handleDeleteAttachment}
+              />
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2">
               <MessageSquare size={20} />
 
@@ -616,7 +730,7 @@ export default function IssueDetailsPage() {
                   key={item.id}
                   className="relative border-l-2 border-blue-200 pl-5"
                 >
-                  <span className="absolute -left-[7px] top-1 h-3 w-3 rounded-full bg-blue-600" />
+                  <span className="absolute -left-1.75 top-1 h-3 w-3 rounded-full bg-blue-600" />
 
                   <p className="text-sm font-semibold text-slate-900">
                     {item.previousStatus

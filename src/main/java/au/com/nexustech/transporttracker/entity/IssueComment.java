@@ -10,7 +10,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -45,12 +44,13 @@ public class IssueComment {
             nullable = false
     )
     private AppUser author;
-    @Lob
+
     @Column(
-        name = "comment_text",
-        nullable = false
-)
-private String commentText;
+            name = "comment_text",
+            nullable = false,
+            columnDefinition = "TEXT"
+    )
+    private String commentText;
 
     @Enumerated(EnumType.STRING)
     @Column(

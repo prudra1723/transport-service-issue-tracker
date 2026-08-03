@@ -95,7 +95,11 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/issues/**",
                                 "/api/dashboard/**",
-                                "/api/admin/users/**"
+                                "/api/admin/users/**",
+                                "/api/issues/**",
+        "/api/dashboard/**",
+        "/api/admin/users/**",
+        "/api/attachments/**"
                         )
                         .authenticated()
 
